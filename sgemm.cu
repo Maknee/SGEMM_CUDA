@@ -11,6 +11,13 @@
 const std::string errLogFile = "matrixValidationFailure.txt";
 
 int main(int argc, char **argv) {
+#ifdef FIXED_KERNEL_NUM
+  // Fixed kernel number for individual kernel executables
+  int kernel_num = FIXED_KERNEL_NUM;
+  (void)argc; // suppress unused parameter warning
+  (void)argv; // suppress unused parameter warning
+#else
+  // Original behavior for main sgemm executable
   if (argc != 2) {
     std::cerr << "Please select a kernel (range 0 - 12, 0 for NVIDIA cuBLAS)"
               << std::endl;
@@ -23,6 +30,7 @@ int main(int argc, char **argv) {
     std::cerr << "Please enter a valid kernel number (0-12)" << std::endl;
     exit(EXIT_FAILURE);
   }
+#endif
 
   // get environment variable for device
   int deviceIdx = 0;
@@ -97,6 +105,7 @@ int main(int argc, char **argv) {
               << ", beta: " << beta << std::endl;
     // Verify the correctness of the calculation, and execute it once before the
     // kernel function timing to avoid cold start errors
+#if defined(KERNEL_0) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
     if (kernel_num != 0) {
       run_kernel(0, m, n, k, alpha, dA, dB, beta, dC_ref,
                  handle); // cuBLAS
@@ -127,6 +136,13 @@ int main(int argc, char **argv) {
         }
         exit(EXIT_FAILURE);
       }
+    } else
+#endif
+    {
+      // Just run the kernel once to avoid cold start
+      run_kernel(kernel_num, m, n, k, alpha, dA, dB, beta, dC, handle);
+      cudaCheck(cudaDeviceSynchronize());
+      cudaCheck(cudaGetLastError());
     }
 
     cudaEventRecord(beg);

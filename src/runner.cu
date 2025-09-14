@@ -1,9 +1,11 @@
+#include "common.cuh"
 #include "kernels.cuh"
 #include "runner.cuh"
 #include <cmath>
 #include <cstdio>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 
 float get_sec() {
   struct timeval time;
@@ -149,13 +151,16 @@ void runCublasTF32(cublasHandle_t handle, int M, int N, int K, float alpha,
                CUBLAS_COMPUTE_32F_FAST_TF32, CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 }
 
+#if defined(KERNEL_1) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void run_sgemm_naive(int M, int N, int K, float alpha, float *A, float *B,
                      float beta, float *C) {
   dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
   dim3 blockDim(32, 32);
   sgemm_naive<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
+#endif
 
+#if defined(KERNEL_2) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void run_sgemm_coalesce(int M, int N, int K, float alpha, float *A, float *B,
                         float beta, float *C) {
   dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
@@ -163,7 +168,9 @@ void run_sgemm_coalesce(int M, int N, int K, float alpha, float *A, float *B,
   sgemm_global_mem_coalesce<32>
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
+#endif
 
+#if defined(KERNEL_3) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void run_sgemm_shared_mem_block(int M, int N, int K, float alpha, float *A,
                                 float *B, float beta, float *C) {
   dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
@@ -177,7 +184,9 @@ void run_sgemm_shared_mem_block(int M, int N, int K, float alpha, float *A,
   sgemm_shared_mem_block<32>
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
+#endif
 
+#if defined(KERNEL_4) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void runSgemm1DBlocktiling(int M, int N, int K, float alpha, float *A, float *B,
                            float beta, float *C) {
   const uint BM = 64;
@@ -189,7 +198,9 @@ void runSgemm1DBlocktiling(int M, int N, int K, float alpha, float *A, float *B,
   sgemm1DBlocktiling<BM, BN, BK, TM>
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
+#endif
 
+#if defined(KERNEL_5) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void runSgemm2DBlocktiling(int M, int N, int K, float alpha, float *A, float *B,
                            float beta, float *C) {
   const uint BK = 8;
@@ -213,7 +224,9 @@ void runSgemm2DBlocktiling(int M, int N, int K, float alpha, float *A, float *B,
         <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   }
 }
+#endif
 
+#if defined(KERNEL_6) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void runSgemmVectorize(int M, int N, int K, float alpha, float *A, float *B,
                        float beta, float *C) {
   const uint BK = 8;
@@ -238,6 +251,9 @@ void runSgemmVectorize(int M, int N, int K, float alpha, float *A, float *B,
   }
 }
 
+#endif
+
+#if defined(KERNEL_7) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void runSgemmResolveBankConflicts(int M, int N, int K, float alpha, float *A,
                                   float *B, float beta, float *C) {
   const uint BK = 8;
@@ -262,6 +278,9 @@ void runSgemmResolveBankConflicts(int M, int N, int K, float alpha, float *A,
   }
 }
 
+#endif
+
+#if defined(KERNEL_8) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void runSgemmResolveBankExtraCol(int M, int N, int K, float alpha, float *A,
                                  float *B, float beta, float *C) {
   const uint BK = 8;
@@ -286,6 +305,9 @@ void runSgemmResolveBankExtraCol(int M, int N, int K, float alpha, float *A,
   }
 }
 
+#endif
+
+#if defined(KERNEL_9) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
                        float beta, float *C) {
   // A100
@@ -328,6 +350,9 @@ void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
+#endif
+
+#if defined(KERNEL_10) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void runSgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
                         float beta, float *C) {
   // Settings for A100
@@ -389,6 +414,9 @@ void runSgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
+#endif
+
+#if defined(KERNEL_11) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void runSgemmDoubleBuffering(int M, int N, int K, float alpha, float *A,
                              float *B, float beta, float *C) {
   // Settings for A100
@@ -450,6 +478,9 @@ void runSgemmDoubleBuffering(int M, int N, int K, float alpha, float *A,
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
+#endif
+
+#if defined(KERNEL_12) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
 void runSgemmDoubleBuffering2(int M, int N, int K, float alpha, float *A,
                               float *B, float beta, float *C) {
   // Settings for A6000
@@ -500,49 +531,76 @@ void runSgemmDoubleBuffering2(int M, int N, int K, float alpha, float *A,
                            K12_TM, K12_TN, K12_NUM_THREADS>
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
+#endif
 
 void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,
                 float *B, float beta, float *C, cublasHandle_t handle) {
   switch (kernel_num) {
+#if defined(KERNEL_0) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 0:
     runCublasFP32(handle, M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_1) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 1:
     run_sgemm_naive(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_2) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 2:
     run_sgemm_coalesce(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_3) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 3:
     run_sgemm_shared_mem_block(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_4) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 4:
     runSgemm1DBlocktiling(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_5) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 5:
     runSgemm2DBlocktiling(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_6) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 6:
     runSgemmVectorize(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_7) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 7:
     runSgemmResolveBankConflicts(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_8) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 8:
     runSgemmResolveBankExtraCol(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_9) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 9:
     runSgemmAutotuned(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_10) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 10:
     runSgemmWarptiling(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_11) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 11:
     runSgemmDoubleBuffering(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
+#if defined(KERNEL_12) || defined(KERNEL_ALL) || NO_KERNEL_DEFINED
   case 12:
     runSgemmDoubleBuffering2(M, N, K, alpha, A, B, beta, C);
     break;
+#endif
   default:
     throw std::invalid_argument("Unknown kernel number");
   }

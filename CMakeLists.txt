@@ -11,6 +11,35 @@ check_language(CUDA)
 set(CMAKE_CXX_STANDARD 20)
 set(CUDA_COMPUTE_CAPABILITY 86)
 
+# Options for generating PTX and SASS assembly files alongside executables
+option(GENERATE_PTX "Generate PTX assembly files" ON)
+option(GENERATE_SASS "Generate SASS assembly files" ON)
+
+# Function to add PTX and SASS targets for a given source
+function(add_assembly_targets target_name source_file)
+    if(GENERATE_PTX)
+        add_custom_target(${target_name}_ptx
+            COMMAND ${CMAKE_CUDA_COMPILER} --ptx -arch=sm_${CUDA_COMPUTE_CAPABILITY}
+                    -I${CUDA_INCLUDE_DIRS} -I${PROJECT_SOURCE_DIR}/src
+                    ${CMAKE_CURRENT_SOURCE_DIR}/${source_file}
+                    -o ${CMAKE_CURRENT_BINARY_DIR}/${target_name}.ptx
+            DEPENDS ${source_file}
+            COMMENT "Generating PTX for ${target_name}"
+        )
+    endif()
+
+    if(GENERATE_SASS)
+        add_custom_target(${target_name}_sass
+            COMMAND ${CMAKE_CUDA_COMPILER} -cubin -arch=sm_${CUDA_COMPUTE_CAPABILITY}
+                    -I${CUDA_INCLUDE_DIRS} -I${PROJECT_SOURCE_DIR}/src
+                    ${CMAKE_CURRENT_SOURCE_DIR}/${source_file}
+                    -o ${CMAKE_CURRENT_BINARY_DIR}/${target_name}.cubin
+            DEPENDS ${source_file}
+            COMMENT "Generating SASS for ${target_name}"
+        )
+    endif()
+endfunction()
+
 # in debug mode, add debug symbols to device code
 # this disables most optimizations and kills performance
 add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANGUAGE:CUDA>>:-G;-src-in-ptx>")
@@ -100,3 +129,55 @@ target_link_libraries(cuBLAS_sgemm ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
 add_executable(simplest_kernel simplest_kernel.cu)
 set_target_properties(simplest_kernel PROPERTIES CUDA_ARCHITECTURES ${CUDA_COMPUTE_CAPABILITY})
 target_link_libraries(simplest_kernel ${CUDA_LIBRARIES})
+
+# Add assembly targets for main kernels
+add_assembly_targets(sgemm sgemm.cu)
+add_assembly_targets(cuBLAS_sgemm cuBLAS_sgemm.cu)
+add_assembly_targets(simplest_kernel simplest_kernel.cu)
+
+# Add assembly targets for individual kernels
+add_assembly_targets(sgemm_kernel_0 sgemm.cu)
+add_assembly_targets(sgemm_kernel_1 sgemm.cu)
+add_assembly_targets(sgemm_kernel_2 sgemm.cu)
+add_assembly_targets(sgemm_kernel_3 sgemm.cu)
+add_assembly_targets(sgemm_kernel_4 sgemm.cu)
+add_assembly_targets(sgemm_kernel_5 sgemm.cu)
+add_assembly_targets(sgemm_kernel_6 sgemm.cu)
+add_assembly_targets(sgemm_kernel_7 sgemm.cu)
+add_assembly_targets(sgemm_kernel_8 sgemm.cu)
+add_assembly_targets(sgemm_kernel_9 sgemm.cu)
+add_assembly_targets(sgemm_kernel_10 sgemm.cu)
+add_assembly_targets(sgemm_kernel_11 sgemm.cu)
+add_assembly_targets(sgemm_kernel_12 sgemm.cu)
+
+# Create meta-targets to build all PTX and SASS files
+if(GENERATE_PTX)
+    add_custom_target(all_ptx
+        DEPENDS sgemm_ptx cuBLAS_sgemm_ptx simplest_kernel_ptx
+                sgemm_kernel_0_ptx sgemm_kernel_1_ptx sgemm_kernel_2_ptx sgemm_kernel_3_ptx
+                sgemm_kernel_4_ptx sgemm_kernel_5_ptx sgemm_kernel_6_ptx sgemm_kernel_7_ptx
+                sgemm_kernel_8_ptx sgemm_kernel_9_ptx sgemm_kernel_10_ptx sgemm_kernel_11_ptx
+                sgemm_kernel_12_ptx
+        COMMENT "Building all PTX files"
+    )
+endif()
+
+if(GENERATE_SASS)
+    add_custom_target(all_sass
+        DEPENDS sgemm_sass cuBLAS_sgemm_sass simplest_kernel_sass
+                sgemm_kernel_0_sass sgemm_kernel_1_sass sgemm_kernel_2_sass sgemm_kernel_3_sass
+                sgemm_kernel_4_sass sgemm_kernel_5_sass sgemm_kernel_6_sass sgemm_kernel_7_sass
+                sgemm_kernel_8_sass sgemm_kernel_9_sass sgemm_kernel_10_sass sgemm_kernel_11_sass
+                sgemm_kernel_12_sass
+        COMMENT "Building all SASS files"
+    )
+endif()
+
+# Create a meta-target to build all assembly files
+add_custom_target(all_assembly)
+if(GENERATE_PTX)
+    add_dependencies(all_assembly all_ptx)
+endif()
+if(GENERATE_SASS)
+    add_dependencies(all_assembly all_sass)
+endif()

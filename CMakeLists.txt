@@ -9,7 +9,12 @@ include(CheckLanguage)
 check_language(CUDA)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CUDA_COMPUTE_CAPABILITY 86)
+
+# Allow CUDA_COMPUTE_CAPABILITY to be set from command line
+# Can be a single value or semicolon-separated list (e.g., "80;86;90")
+if(NOT DEFINED CUDA_COMPUTE_CAPABILITY)
+    set(CUDA_COMPUTE_CAPABILITY 86)
+endif()
 
 # Options for generating PTX and SASS assembly files alongside executables
 option(GENERATE_PTX "Generate PTX assembly files" ON)
